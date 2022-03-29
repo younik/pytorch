@@ -1185,7 +1185,6 @@ TEST(RunTimeTest, ParseOperator) {
       function.get());
   parseOperators(
       std::move(*c10::ivalue::Tuple::create(operators)).elements(),
-      model_version,
       1,
       function.get());
   const size_t rsize = 5;
@@ -1568,7 +1567,6 @@ TEST(RunTimeTest, RuntimeCall) {
       foo.get());
   parseOperators(
       std::move(*c10::ivalue::Tuple::create(operatorsFoo)).elements(),
-      model_version,
       1,
       foo.get());
   parseConstants(
@@ -1585,7 +1583,6 @@ TEST(RunTimeTest, RuntimeCall) {
       call.get());
   parseOperators(
       std::move(*c10::ivalue::Tuple::create(operatorsCall)).elements(),
-      model_version,
       1,
       call.get());
   parseConstants(
