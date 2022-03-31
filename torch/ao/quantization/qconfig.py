@@ -41,7 +41,18 @@ from .observer import (
 import warnings
 
 
-class QConfig(namedtuple('QConfig', ['activation', 'weight'])):
+class QConfig(namedtuple('QConfig',
+        ['activation',
+         'weight',
+         'bias',
+         'input_activation',
+         'output_activation'],
+        defaults=(
+            None,
+            None,
+            None,
+            None,
+            None))):
     """
     Describes how to quantize a layer or a part of the network by providing
     settings (observer classes) for activations and weights respectively.
@@ -50,7 +61,12 @@ class QConfig(namedtuple('QConfig', ['activation', 'weight'])):
     Note that QConfig needs to contain observer **classes** (like MinMaxObserver) or a callable that returns
     instances on invocation, not the concrete observer instances themselves.
     Quantization preparation function will instantiate observers multiple times for each of the layers.
-
+    All fields are optional but there are some constraints:
+    * when `bias` observer is not provided, we'll infer the dtype of bias from input
+    activation and weight
+    * when `input_activation` or `output_activation` configs are None, we'll use
+    `activation` config, `activation` can't be None if one of `input_activation` and
+    `output_activation` is None
 
     Observer classes have usually reasonable default arguments, but they can be overwritten with `with_args`
     method (that behaves like functools.partial)::
@@ -60,12 +76,27 @@ class QConfig(namedtuple('QConfig', ['activation', 'weight'])):
           weight=default_observer.with_args(dtype=torch.qint8))
 
     """
-    def __new__(cls, activation, weight):
+    def __new__(
+            cls,
+            activation=None,
+            weight=None,
+            bias=None,
+            input_activation=None,
+            output_activation=None):
         # catch common mistakes
-        if isinstance(activation, nn.Module) or isinstance(weight, nn.Module):
-            raise ValueError("QConfig received observer instance, please pass observer class instead. " +
-                             "Use MyObserver.with_args(x=1) to override arguments to constructor if needed")
-        return super(QConfig, cls).__new__(cls, activation, weight)
+        constructors = [activation, weight, bias, input_activation, output_activation]
+        for ctr in constructors:
+            if isinstance(ctr, nn.Module):
+                raise ValueError(
+                    "QConfig received observer instance, please pass observer class instead. " +
+                    "Use MyObserver.with_args(x=1) to override arguments to constructor if needed")
+        # reject invalid configuration
+        if input_activation is None or output_activation is None:
+            assert activation is not None, "Must provide activation config if one of " \
+                "`input_activation` and `output_activation` is None"
+        assert weight is not None, "config for weight is required"
+        return super(QConfig, cls).__new__(
+            cls, activation, weight, bias, input_activation, output_activation)
 
 
 class QConfigDynamic(namedtuple('QConfigDynamic', ['activation', 'weight'])):
